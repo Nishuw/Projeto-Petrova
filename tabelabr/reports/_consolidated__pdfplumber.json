@@ -1,0 +1,46 @@
+{
+  "call_4t25_port.pdf": {
+    "total_tables": 25,
+    "tables_with_failures": 23,
+    "pct_with_failures": 92.0,
+    "by_code": {
+      "TINY_TABLE": 20,
+      "MISSING_HEADER": 18,
+      "SPARSE_ROWS": 9,
+      "MIXED_COLUMN": 1
+    }
+  },
+  "MGLU_ER_4T25_POR.pdf": {
+    "total_tables": 34,
+    "tables_with_failures": 27,
+    "pct_with_failures": 79.4,
+    "by_code": {
+      "MIXED_COLUMN": 6,
+      "MISSING_HEADER": 19,
+      "SPARSE_ROWS": 8,
+      "TINY_TABLE": 8
+    }
+  },
+  "Produção e vendas da Vale no 1T26.pdf": {
+    "total_tables": 18,
+    "tables_with_failures": 18,
+    "pct_with_failures": 100.0,
+    "by_code": {
+      "MISSING_HEADER": 18,
+      "SPARSE_ROWS": 6,
+      "MIXED_COLUMN": 4,
+      "TINY_TABLE": 3
+    }
+  },
+  "Relatório de Produção e Vendas 1T25.pdf": {
+    "total_tables": 19,
+    "tables_with_failures": 19,
+    "pct_with_failures": 100.0,
+    "by_code": {
+      "TINY_TABLE": 11,
+      "MISSING_HEADER": 19,
+      "SPARSE_ROWS": 5,
+      "MIXED_COLUMN": 8
+    }
+  }
+}
