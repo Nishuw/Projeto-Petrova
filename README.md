@@ -1,36 +1,45 @@
 # Projeto Petrova
 
-Pesquisa aplicada sobre **chunking e recuperação de informação em documentos
-brasileiros** para sistemas RAG (Retrieval-Augmented Generation).
+Projeto de **pesquisa em algoritmos de chunking** para sistemas RAG
+(Retrieval-Augmented Generation), com foco em **tabelas de relatórios
+financeiros e operacionais de empresas brasileiras listadas**.
 
 > O nome é só um codinome de trabalho. O foco é técnico.
 
 ---
 
-## Por que esse projeto existe
+## Tese
 
-Sistemas RAG dependem de quebrar documentos em pedaços (*chunks*) que serão
-indexados e recuperados depois. Os algoritmos atuais (LangChain, LlamaIndex,
-Unstructured) foram **pensados e otimizados em inglês**, em geral em textos
-narrativos. Quando aplicados a:
+Sistemas RAG comuns quebram documentos em pedaços (*chunks*) usando
+estratégias genéricas (tamanho fixo, fim de sentença, recursão por
+separadores). Quando o documento contém **tabelas**, essas estratégias
+destroem o contexto estrutural — título da tabela, unidade de medida,
+cabeçalhos de coluna — e o pedaço recuperado pelo retriever vira uma
+sequência de números sem significado para o LLM.
 
-- documentos em **português brasileiro**,
-- com muitas **tabelas estruturadas**,
-- e formatos típicos do mercado nacional (DRE, balanço, releases CVM/B3,
-  laudos, editais),
+A tese que este repositório investiga, em uma frase:
 
-o resultado é ruim de formas mensuráveis: tabelas quebradas, números sem
-unidade, notas de rodapé órfãs, colunas mescladas. Tudo isso degrada a
-qualidade das respostas finais do LLM.
+> **Reformular cada linha de uma tabela em um chunk auto-suficiente
+> (carregando título + unidade + cabeçalho de coluna em cada chunk)
+> elimina o colapso de precisão que ocorre em RAGs reais quando o
+> retriever entrega só uma parte da tabela.**
 
-A pergunta de pesquisa, hoje, é estreita de propósito:
+Esta é uma tese **empírica**: o repositório existe para testá-la com
+dados reais (releases CVM/B3 de Vale, Itaú, Magalu) e medir custo
+(tokens) versus benefício (precisão de resposta).
 
-> **Como construir um pipeline de chunking + retrieval que responda
-> corretamente a perguntas numéricas sobre demonstrações financeiras
-> e relatórios operacionais de empresas brasileiras listadas?**
+## Resultado central até agora
 
-Começando estreito, com chance real de gerar evidência empírica antes de
-qualquer reivindicação grande.
+Em uma tabela alvo da Vale (1T26, "Resumo da produção"), com 7
+perguntas de gabarito e Llama-3.3-70b como avaliador:
+
+| Cenário | Baseline (tabela bruta) | Auto-contido | Δ acurácia | Δ tokens |
+|---|---:|---:|---:|---:|
+| Contexto completo (LLM recebe tabela inteira) | 85.7% | 85.7% | 0 pp | +43% |
+| Retrieval parcial (LLM recebe só o chunk relevante) | **0.0%** | **85.7%** | **+85.7 pp** | +26% |
+
+Resultados completos, com método e dados crus, em
+[`tabelabr/reports/RESULTS.md`](./tabelabr/reports/RESULTS.md).
 
 ---
 
@@ -57,11 +66,12 @@ qualquer reivindicação grande.
 
 | Fase | Descrição | Status |
 |------|-----------|--------|
-| 0 | Provar que o problema existe (rodar baselines em DF reais) | em andamento |
-| 1 | Construir benchmark próprio (TabelaBR-50: perguntas com gabarito) | pendente |
-| 2 | Atacar o modo de falha dominante com algoritmo próprio | pendente |
-| 3 | Avaliação rigorosa vs. baselines | pendente |
-| 4 | Documentação, post técnico, repositório público maduro | pendente |
+| 0 | Provar que o problema existe (rodar baselines em DF reais) | concluída — 90.6% das tabelas com falha em 4 docs |
+| 1 | Protótipo do algoritmo (chunk auto-contido) e validação experimental | concluída — tese refinada confirmada |
+| 2 | Generalizar o algoritmo para variações de layout (sub-cabeçalhos, notas) | em andamento |
+| 3 | Benchmark TabelaBR-50 (50 perguntas com gabarito em ≥ 5 documentos) | pendente |
+| 4 | Avaliação rigorosa vs. Unstructured.io e Docling | pendente |
+| 5 | Documentação, post técnico, repositório público maduro | pendente |
 
 Detalhes em [`ROADMAP.md`](./ROADMAP.md).
 
@@ -80,11 +90,19 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# 3. Coloque um PDF de DF real em data/raw/ e rode o baseline
-python scripts\01_baseline_pdfplumber.py "data\raw\<seu_arquivo>.pdf"
+# 3. Configure a chave da NVIDIA Build (https://build.nvidia.com/)
+copy .env.example .env
+# edite .env e cole sua NVIDIA_API_KEY
+
+# 4. Rode o baseline em todos os PDFs de data/raw/
+python scripts\02_baseline_batch.py
+
+# 5. Reproduza os experimentos do algoritmo
+python scripts\03_eval_chunkers.py            # cenário com contexto cheio
+python scripts\04_eval_partial_retrieval.py   # cenário de retrieval parcial
 ```
 
-O relatório de saída fica em `tabelabr/reports/`.
+Os relatórios saem em `tabelabr/reports/`.
 
 ---
 

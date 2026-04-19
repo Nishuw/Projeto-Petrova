@@ -27,22 +27,30 @@ formato CVM/B3, perguntas com resposta numérica verificável.
 tabelabr/
 ├── README.md                Este arquivo
 ├── requirements.txt         Dependências Python
+├── .env.example             Template para a chave da NVIDIA Build
 ├── data/
-│   ├── raw/                 PDFs originais (NÃO versionados — gitignorados)
-│   └── processed/           Saídas intermediárias
+│   ├── raw/                 PDFs originais (não versionados)
+│   └── processed/           Conjuntos de pergunta+gabarito (versionados)
 ├── reports/                 Relatórios gerados pelos scripts
-├── scripts/                 Pontos de entrada numerados por etapa
-│   └── 01_baseline_pdfplumber.py
+│   ├── RESULTS.md           Síntese narrativa dos experimentos
+│   └── ...                  Saídas brutas (markdown e JSON) de cada run
+├── scripts/                 Pontos de entrada, numerados por ordem
+│   ├── 01_baseline_pdfplumber.py     Baseline em 1 PDF
+│   ├── 02_baseline_batch.py          Baseline em todos os PDFs de data/raw/
+│   ├── 03_eval_chunkers.py           Experimento: contexto cheio
+│   └── 04_eval_partial_retrieval.py  Experimento: retrieval parcial
 └── src/                     Módulos reutilizáveis
-    ├── __init__.py
-    └── failure_modes.py     Detectores automáticos de problemas em tabelas
+    ├── failure_modes.py            Detectores de modos de falha
+    ├── self_contained_chunker.py   O algoritmo proposto
+    └── llm_client.py               Cliente LLM (NVIDIA NIM)
 ```
 
 ---
 
 ## Setup
 
-Pré-requisitos: **Python 3.11+**.
+Pré-requisitos: **Python 3.11+** e uma chave de API da
+[NVIDIA Build](https://build.nvidia.com/) (gratuita).
 
 ```powershell
 # A partir da raiz do repositório
@@ -50,6 +58,9 @@ cd tabelabr
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+
+copy .env.example .env
+# edite .env e cole sua NVIDIA_API_KEY
 ```
 
 No Linux / macOS:
@@ -59,31 +70,42 @@ cd tabelabr
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
+# edite .env e cole sua NVIDIA_API_KEY
 ```
+
+> O arquivo `.env` está no `.gitignore`. **Nunca commit chaves de API.**
 
 ---
 
 ## Uso
 
-### 1. Coloque um PDF de demonstração financeira em `data/raw/`
+### 1. Coloque PDFs de DFs reais em `data/raw/`
 
-Sugestões de fonte (todas públicas):
+Fontes públicas:
 
-- Releases de resultados da Vale: <https://vale.com/pt/investidores>
-- Releases do Itaú: <https://www.itau.com.br/relacoes-com-investidores/release-de-resultados>
-- ITR/DFP oficiais na CVM: <https://www.rad.cvm.gov.br/>
+- Vale: <https://vale.com/pt/investidores>
+- Itaú: <https://www.itau.com.br/relacoes-com-investidores/release-de-resultados>
+- CVM: <https://www.rad.cvm.gov.br/>
 
-### 2. Rode o baseline
+### 2. Diagnóstico do problema (Fase 0)
 
 ```powershell
-python scripts\01_baseline_pdfplumber.py "data\raw\<nome_do_arquivo>.pdf"
+python scripts\02_baseline_batch.py
 ```
 
-### 3. Veja a saída
+Roda o `pdfplumber` em todos os PDFs de `data/raw/`, classifica as
+tabelas por modo de falha e gera `reports/_consolidated__pdfplumber.md`.
 
-- Sumário no terminal (tabela rica com falhas por tipo)
-- Relatório markdown legível em `reports/<arquivo>__pdfplumber.md`
-- Dump JSON com tudo em `reports/<arquivo>__pdfplumber.json`
+### 3. Reproduzir os experimentos do algoritmo (Fase 1)
+
+```powershell
+python scripts\03_eval_chunkers.py            # contexto cheio
+python scripts\04_eval_partial_retrieval.py   # retrieval parcial
+```
+
+A leitura completa dos resultados está em
+[`reports/RESULTS.md`](./reports/RESULTS.md).
 
 ---
 
@@ -111,10 +133,9 @@ honesto de problemas em quem é o usuário-alvo do projeto.
 
 | # | Nome | O que faz |
 |---|------|-----------|
-| 02 | `02_baseline_unstructured.py` | Mesma análise usando Unstructured.io |
-| 03 | `03_build_benchmark.py` | Constrói TabelaBR-50 a partir dos PDFs |
-| 04 | `04_eval_chunkers.py` | Avalia chunkers no benchmark |
-| 05 | `05_self_contained_chunker.py` | Implementação do chunker proposto |
+| 05 | `05_baseline_unstructured.py` | Diagnóstico usando Unstructured.io para comparar com `pdfplumber` |
+| 06 | `06_build_tabelabr50.py` | Consolida o benchmark TabelaBR-50 (50 perguntas em ≥5 documentos) |
+| 07 | `07_eval_full_benchmark.py` | Roda baseline vs. auto-contido em todo o benchmark |
 
 ---
 
