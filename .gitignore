@@ -33,8 +33,10 @@ Thumbs.db
 # Notebooks (output só, não o arquivo)
 .ipynb_checkpoints/
 
-# Dados grandes não vão para o repositório
+# PDFs originais não vão para o repositório (são grandes e públicos
+# em outras fontes — ver tabelabr/README.md para origem).
 tabelabr/data/raw/*
 !tabelabr/data/raw/.gitkeep
-tabelabr/data/processed/*
-!tabelabr/data/processed/.gitkeep
+
+# data/processed/ é versionado: contém perguntas+gabarito do benchmark
+# (arquivos JSON pequenos que valem como ground truth do projeto).
