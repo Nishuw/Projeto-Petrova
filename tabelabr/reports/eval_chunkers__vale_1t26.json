@@ -1,0 +1,126 @@
+{
+  "generated_at": "2026-04-19T13:26:28Z",
+  "source": "Produção e vendas da Vale no 1T26.pdf",
+  "table_title": "Resumo da produção",
+  "n_questions": 7,
+  "baseline": {
+    "correct": 6,
+    "accuracy": 0.8571428571428571,
+    "tokens_total": 2371
+  },
+  "self_contained": {
+    "correct": 6,
+    "accuracy": 0.8571428571428571,
+    "tokens_total": 3386,
+    "n_chunks": 4
+  },
+  "trials": [
+    {
+      "id": "q1_minerio_ferro_1t26",
+      "question": "Qual foi a produção de minério de ferro da Vale no 1T26 (em mil toneladas métricas)?",
+      "gold_answers": [
+        "69.675",
+        "69675",
+        "69,675"
+      ],
+      "answer_baseline": "69.675",
+      "correct_baseline": true,
+      "tokens_baseline": 343,
+      "answer_self_contained": "69.675",
+      "correct_self_contained": true,
+      "tokens_self_contained": 488
+    },
+    {
+      "id": "q2_pelotas_variacao_aa",
+      "question": "Qual foi a variação ano contra ano (a/a) da produção de pelotas no 1T26?",
+      "gold_answers": [
+        "13,7%",
+        "13,7 %",
+        "13.7%",
+        "+13,7%",
+        "13,7 por cento"
+      ],
+      "answer_baseline": "13,7 %",
+      "correct_baseline": true,
+      "tokens_baseline": 339,
+      "answer_self_contained": "13,7%",
+      "correct_self_contained": true,
+      "tokens_self_contained": 484
+    },
+    {
+      "id": "q3_cobre_4t25",
+      "question": "Quanto a Vale produziu de cobre no 4T25?",
+      "gold_answers": [
+        "108,1",
+        "108.1",
+        "108,1 mil toneladas",
+        "108,1 kt"
+      ],
+      "answer_baseline": "108,1",
+      "correct_baseline": true,
+      "tokens_baseline": 330,
+      "answer_self_contained": "108,1",
+      "correct_self_contained": true,
+      "tokens_self_contained": 475
+    },
+    {
+      "id": "q4_niquel_var_tt",
+      "question": "Qual foi a variação trimestre contra trimestre (t/t) da produção de níquel no 1T26?",
+      "gold_answers": [
+        "6,7%",
+        "6,7 %",
+        "6.7%",
+        "+6,7%"
+      ],
+      "answer_baseline": "6,7 %",
+      "correct_baseline": true,
+      "tokens_baseline": 341,
+      "answer_self_contained": "6,7%",
+      "correct_self_contained": true,
+      "tokens_self_contained": 486
+    },
+    {
+      "id": "q5_unidade_minerio",
+      "question": "Em que unidade está expressa a produção de minério de ferro nessa tabela?",
+      "gold_answers": [
+        "mil toneladas métricas",
+        "mil toneladas metricas",
+        "milhares de toneladas métricas",
+        "kt"
+      ],
+      "answer_baseline": "Mil toneladas métricas",
+      "correct_baseline": true,
+      "tokens_baseline": 339,
+      "answer_self_contained": "Mil toneladas métricas",
+      "correct_self_contained": true,
+      "tokens_self_contained": 484
+    },
+    {
+      "id": "q6_titulo_tabela",
+      "question": "Qual é o título da tabela que contém esses dados de produção?",
+      "gold_answers": [
+        "resumo da produção",
+        "resumo da producao"
+      ],
+      "answer_baseline": "Resumo da produção",
+      "correct_baseline": true,
+      "tokens_baseline": 332,
+      "answer_self_contained": "Resumo da produção",
+      "correct_self_contained": true,
+      "tokens_self_contained": 477
+    },
+    {
+      "id": "q7_pelotas_4t25_vs_1t26",
+      "question": "A produção de pelotas no 4T25 foi maior ou menor que no 1T26? Diga apenas 'maior' ou 'menor'.",
+      "gold_answers": [
+        "maior"
+      ],
+      "answer_baseline": "menor",
+      "correct_baseline": false,
+      "tokens_baseline": 347,
+      "answer_self_contained": "menor",
+      "correct_self_contained": false,
+      "tokens_self_contained": 492
+    }
+  ]
+}
