@@ -1,15 +1,24 @@
 """
 Fase 0 — Baseline com pdfplumber.
 
-Pega um PDF de DF brasileira (ITR/DFP/release de resultados) e:
-  1. Extrai todas as tabelas página a página com pdfplumber.
-  2. Roda detectores de modos de falha em cada tabela.
-  3. Gera um relatório markdown em reports/ e um JSON com tudo bruto.
+O que esse script faz:
+    1. Abre um PDF (esperado: demonstração financeira ou release de
+       resultados de empresa brasileira).
+    2. Extrai todas as tabelas página a página com `pdfplumber`,
+       deliberadamente usando os parâmetros default — o objetivo é
+       documentar como uma ferramenta padrão se comporta "fora da caixa".
+    3. Aplica os detectores em `src/failure_modes.py` para sinalizar
+       problemas em cada tabela.
+    4. Gera dois artefatos em `reports/`:
+         - <stem>__pdfplumber.md   relatório legível (top 20 piores casos)
+         - <stem>__pdfplumber.json dump completo para análises posteriores
 
 Uso:
     python scripts/01_baseline_pdfplumber.py data/raw/<arquivo>.pdf
 
-Não pretende ser bom — pretende ser HONESTO sobre onde a baseline atual quebra.
+Esse script não tenta ser bom — tenta ser HONESTO sobre onde a baseline
+falha. Os relatórios alimentam a Fase 1 (construção do benchmark) e a
+Fase 2 (escolha do modo de falha que será atacado pelo algoritmo próprio).
 """
 
 from __future__ import annotations
@@ -23,19 +32,38 @@ import pdfplumber
 from rich.console import Console
 from rich.table import Table as RichTable
 
+# Adiciona a raiz do projeto ao sys.path para importar `src.failure_modes`
+# sem precisar instalar como pacote. Conveniência de scripts numerados.
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.failure_modes import detect_all, summarize  # noqa: E402
+from src.failure_modes import detect_all  # noqa: E402  (import depois de mexer no sys.path)
 
 console = Console()
 
 
+# ---------------------------------------------------------------------------
+# Extração
+# ---------------------------------------------------------------------------
+
+
 def extract_tables(pdf_path: Path) -> list[dict]:
-    """Extrai todas as tabelas do PDF, anotando página e índice."""
+    """Extrai tabelas de todas as páginas e roda detectores.
+
+    Devolve uma lista de dicionários (uma entrada por tabela), cada um
+    contendo página, índice na página, dimensões, falhas detectadas e
+    um preview com as 5 primeiras linhas. A escolha de manter a estrutura
+    "achatada" (em vez de aninhar por página) é intencional: facilita
+    serializar para JSON e exportar para outras análises depois.
+    """
     out: list[dict] = []
+
     with pdfplumber.open(pdf_path) as pdf:
         for page_num, page in enumerate(pdf.pages, start=1):
+            # `extract_tables()` pode falhar em PDFs com fontes embutidas
+            # estranhas. Em vez de matar o script, registramos e seguimos —
+            # o mais valioso aqui é ver o resultado em todas as páginas
+            # que dão certo, não interromper na primeira que dá ruim.
             try:
                 tables = page.extract_tables() or []
             except Exception as e:
@@ -43,10 +71,12 @@ def extract_tables(pdf_path: Path) -> list[dict]:
                     f"[red]Erro extraindo página {page_num}: {e}[/red]"
                 )
                 tables = []
+
             for t_idx, table in enumerate(tables):
                 rows = len(table)
                 cols = max((len(r) for r in table), default=0)
                 failures = detect_all(table)
+
                 out.append(
                     {
                         "page": page_num,
@@ -62,22 +92,41 @@ def extract_tables(pdf_path: Path) -> list[dict]:
                             }
                             for f in failures
                         ],
+                        # Preview limitado a 5 linhas para o relatório
+                        # markdown não ficar gigante. Quem quiser tudo
+                        # vai no JSON.
                         "preview": table[:5],
                     }
                 )
+
     return out
 
 
+# ---------------------------------------------------------------------------
+# Relatório
+# ---------------------------------------------------------------------------
+
+
+def _failures_by_code(results: list[dict]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for r in results:
+        for f in r["failures"]:
+            counts[f["code"]] = counts.get(f["code"], 0) + 1
+    return counts
+
+
 def build_report(pdf_path: Path, results: list[dict]) -> str:
+    """Gera o relatório markdown com sumário e top-20 problemas.
+
+    O cap em 20 é arbitrário, mas tem razão: relatórios infinitos não
+    são lidos. 20 é o suficiente para inspeção manual representativa.
+    Quem quiser ver tudo, abre o JSON.
+    """
     total_tables = len(results)
     if total_tables == 0:
         return f"# Relatório: {pdf_path.name}\n\nNenhuma tabela detectada.\n"
 
-    all_failures = [f for r in results for f in r["failures"]]
-    by_code: dict[str, int] = {}
-    for f in all_failures:
-        by_code[f["code"]] = by_code.get(f["code"], 0) + 1
-
+    by_code = _failures_by_code(results)
     tables_with_issues = sum(1 for r in results if r["failures"])
     pct_problem = tables_with_issues / total_tables * 100
 
@@ -104,6 +153,7 @@ def build_report(pdf_path: Path, results: list[dict]) -> str:
     lines.append("")
     lines.append("## Tabelas com falhas (top 20)")
     lines.append("")
+
     shown = 0
     for r in results:
         if not r["failures"]:
@@ -111,6 +161,7 @@ def build_report(pdf_path: Path, results: list[dict]) -> str:
         if shown >= 20:
             break
         shown += 1
+
         lines.append(
             f"### Pág. {r['page']} — tabela #{r['table_index']} "
             f"({r['rows']}×{r['cols']})"
@@ -124,18 +175,28 @@ def build_report(pdf_path: Path, results: list[dict]) -> str:
         lines.append("")
         lines.append("```")
         for row in r["preview"]:
+            # Substituir None / "" por · só para alinhar visualmente.
+            # Em produção, isso seria o caractere "vazio" do output.
             lines.append(" | ".join((c or "·") for c in row))
         lines.append("```")
         lines.append("")
+
     return "\n".join(lines)
 
 
+# ---------------------------------------------------------------------------
+# Saída no terminal
+# ---------------------------------------------------------------------------
+
+
 def print_summary(pdf_path: Path, results: list[dict]) -> None:
+    """Imprime um resumo bonito no terminal usando `rich`.
+
+    Foco do sumário no terminal: dar ao usuário um sinal IMEDIATO de se
+    a extração foi razoável ou catastrófica. Detalhes ficam no markdown.
+    """
     total = len(results)
-    all_failures = [f for r in results for f in r["failures"]]
-    by_code: dict[str, int] = {}
-    for f in all_failures:
-        by_code[f["code"]] = by_code.get(f["code"], 0) + 1
+    by_code = _failures_by_code(results)
 
     console.rule(f"[bold]Resultado para {pdf_path.name}[/bold]")
     console.print(f"Tabelas extraídas: [bold]{total}[/bold]")
@@ -143,15 +204,22 @@ def print_summary(pdf_path: Path, results: list[dict]) -> None:
         f"Tabelas com falhas detectadas: "
         f"[bold]{sum(1 for r in results if r['failures'])}[/bold]"
     )
+
     if not by_code:
         console.print("[green]Nenhum modo de falha detectado.[/green]")
         return
+
     rich_t = RichTable(title="Falhas por tipo")
     rich_t.add_column("Código")
     rich_t.add_column("Ocorrências", justify="right")
     for code, n in sorted(by_code.items(), key=lambda x: -x[1]):
         rich_t.add_row(code, str(n))
     console.print(rich_t)
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 
 def main() -> int:
@@ -176,8 +244,10 @@ def main() -> int:
 
     json_out = reports_dir / f"{stem}__pdfplumber.json"
     md_out = reports_dir / f"{stem}__pdfplumber.md"
+
     json_out.write_text(
-        json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(results, ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
     md_out.write_text(build_report(pdf_path, results), encoding="utf-8")
 

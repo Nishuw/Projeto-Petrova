@@ -1,0 +1,19 @@
+# Forçar fim de linha LF para arquivos de texto (evita bagunça no Windows)
+* text=auto eol=lf
+
+# Binários comuns: deixar como estão
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.zip  binary
+
+# Linguagens — explicitar
+*.py   text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.txt  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf

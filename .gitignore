@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# IDEs / editores
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Arquivos temporários
+*.log
+*.tmp
+
+# Variáveis de ambiente / segredos
+.env
+.env.local
+
+# Notebooks (output só, não o arquivo)
+.ipynb_checkpoints/
+
+# Dados grandes não vão para o repositório
+tabelabr/data/raw/*
+!tabelabr/data/raw/.gitkeep
+tabelabr/data/processed/*
+!tabelabr/data/processed/.gitkeep
