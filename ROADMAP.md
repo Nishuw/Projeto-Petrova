@@ -65,14 +65,26 @@ observadas nos 4 documentos da Fase 0 que ele ainda não cobre bem.
 
 **Tarefas:**
 
+- [x] **#1 — Recuperação de cabeçalho via texto da página.** Para
+      tabelas em que o `pdfplumber` extrai os dados mas perde a linha
+      de header (modo `MISSING_HEADER`, 74 ocorrências no corpus).
+      Resultado no DRE do Itaú: precisão sobe de 14.3% para 71.4% sob
+      retrieval parcial, com custo de tokens praticamente nulo.
+- [x] **#2 — Normalização numérica.** Junta espaços falsos dentro de
+      números (`"4 7.560"` → `"47.560"`) e converte sinais contábeis
+      (`"(9.397)"` → `"-9.397"`). Resultado no DRE do Itaú em linhas
+      sujas: precisão sobe de 57.1% para **100.0%** sobre a Fase 2 #1
+      sozinha, com **−2.4% de tokens**.
+- [ ] **#3 — Detector "essa tabela vale a pena chunkar?"** Filtro
+      anti-`TINY_TABLE` para evitar gerar chunks de cabeçalhos de
+      seção, blocos de 1–2 células e artefatos de borda.
+- [ ] **#4 — Notas de rodapé referenciadas por superíndice
+      (`¹`, `²`)** — hoje ficam órfãs; precisam ser anexadas ao chunk
+      do item que as cita.
 - [ ] Tabelas com sub-cabeçalhos hierárquicos
-      (ex: período-Controladora vs período-Consolidado, comum em DREs)
-- [ ] Notas de rodapé referenciadas por superíndice (`¹`, `²`) — hoje
-      ficam órfãs; precisam ser anexadas ao chunk correspondente
-- [ ] Linhas de total/subtotal — devem virar chunks distintos com flag
-- [ ] Tabelas multi-página (cabeçalho repetido na página seguinte)
-- [ ] Detector automático "essa tabela vale a pena chunkar?" para evitar
-      gerar chunks de pseudo-tabelas (`TINY_TABLE`)
+      (ex: período-Controladora vs período-Consolidado).
+- [ ] Linhas de total/subtotal — devem virar chunks distintos com flag.
+- [ ] Tabelas multi-página (cabeçalho repetido na página seguinte).
 
 **Critério de pronto:** o chunker roda sem perder informação em pelo
 menos 80% das tabelas dos 4 documentos do corpus inicial.

@@ -221,22 +221,83 @@ em `reports/eval_partial_retrieval__itau_4t25.json`.
 
 ---
 
+## Fase 2, item #2 — normalização numérica
+
+**Motivação:** mesmo com o cabeçalho recuperado (item #1), as linhas
+em que o `pdfplumber` quebrou o número continuavam respondendo errado.
+Duas patologias específicas dominam o Itaú:
+
+1. **Espaços falsos dentro do número.** Quando o layout aperta uma
+   coluna, o parser insere um espaço entre o primeiro dígito e o
+   resto: `"47.560"` vira `"4 7.560"`, `"184.393"` vira `"1 84.393"`,
+   `"5.167"` vira `"5 .167"`. O LLM não sabe se deve pegar o primeiro
+   token, o segundo, ou concatenar — em geral chuta o segundo (o
+   "mais bonito") e responde errado.
+2. **Sinais contábeis em parênteses.** Despesas e custos em DFs vêm
+   como `"(9.397)"` em vez de `"-9.397"`. Convenção padrão do
+   mercado, mas confunde matchers automáticos.
+
+**Método:** novo caso de teste
+(`data/processed/itau_4t25_dirty_qa.json`, 7 perguntas em linhas
+SUJAS — 4 com espaço falso, 3 com parênteses) e três cenários sob
+retrieval parcial. A normalização é controlada por flag
+`normalize_numbers` em `render_self_contained_chunks`, então dá pra
+medir o efeito ISOLADO sobre o estado da arte da Fase 2 #1.
+
+**Resultado:**
+
+| Estratégia | Acertos | Precisão | Tokens |
+|---|---:|---:|---:|
+| Baseline (linha solta, sem header) | 1/7 | 14.3% | 1476 |
+| Auto-contido — só Fase 2 #1 | 4/7 | 57.1% | 1744 |
+| **Auto-contido — Fase 2 #1 + #2** | **7/7** | **100.0%** | **1702** |
+
+Detalhe pergunta a pergunta:
+
+| ID | Patologia | Resp. só #1 | Resp. #1 + #2 |
+|---|---|---|---|
+| q1_produto_bancario_4t25 → 47.560 | espaço falso `"4 7.560"` | "4.560" ✗ | "47.560" ✓ |
+| q2_produto_bancario_2025 → 184.393 | espaço falso `"1 84.393"` | "84.393" ✗ | "184.393" ✓ |
+| q3_mfg_2024 → 112.445 | espaço falso `"1 12.445"` | "12.445" ✗ | "112.445" ✓ |
+| q4_rps_4t24 → 11.697 | espaço falso `"1 1.697"` | "11.697" ✓ | "11.697" ✓ |
+| q5_custo_credito_4t25 → 9.397 | parênteses `"(9.397)"` | "9.397" ✓ | "9.397" ✓ |
+| q6_custo_credito_2024 → 34.493 | parênteses `"( 34.493)"` | "34.493" ✓ | "34.493" ✓ |
+| q7_despesas_tributarias_4t25 → 2.619 | parênteses `"( 2.619)"` | "2.619" ✓ | "2.619" ✓ |
+
+**Leitura:**
+- Δ marginal de #2 sobre #1: **+42.9 pontos percentuais** (57.1% → 100%).
+- Custo: **−2.4% em tokens** — converter `"( 34.493)"` em `"-34.493"`
+  é, literalmente, 4 caracteres a menos. A normalização é
+  praticamente "grátis".
+- **Insight não-trivial:** as 3 perguntas de parênteses (q5, q6, q7)
+  já passavam SEM normalização. O Llama-3.3-70b reconhece a convenção
+  contábil e reporta o número limpo mesmo recebendo `"(9.397)"`. Em
+  outras palavras: para LLMs frontier o sinal contábil é menos
+  perigoso do que parece. **A patologia que realmente derruba o
+  pipeline é o espaço falso dentro do número** — onde sem
+  normalização o modelo não tem como adivinhar o token certo.
+- Os 3 acertos novos atribuíveis a #2 (q1, q2, q3) compõem 100% do
+  ganho desta fase — isolamento experimental limpo.
+
+Reproduzir: `python scripts/06_eval_normalization_itau.py`. Saída em
+`reports/eval_normalization__itau_4t25.json`.
+
+---
+
 ## Próximos passos planejados
 
-1. **Fase 2 #2:** normalização numérica — juntar espaços falsos
-   (`"4 7.560"` → `"47.560"`), converter sinais contábeis
-   (`"(9.397)"` → `"-9.397"`). Isso é o que barra mais perguntas
-   sobre o Itaú hoje.
-2. **Fase 2 #3:** detector automático "vale chunkar?" — filtro
+1. **Fase 2 #3:** detector automático "vale chunkar?" — filtro
    anti-`TINY_TABLE` para evitar poluir o vector store com
-   pseudo-tabelas.
-3. **Fase 2 #4:** anexar notas de rodapé ao chunk do item que as
-   referencia.
-4. Ajuste fino do template do chunk (trocar "Tabela:" por
-   "Título da tabela:" para resolver o q7; repetir o ∆ com
-   sufixo explícito "∆ t/t" quando puder inferir).
-5. Generalizar para tabelas com sub-cabeçalhos hierárquicos
+   pseudo-tabelas (cabeçalhos de seção, blocos com 1–2 células,
+   artefatos de borda).
+2. **Fase 2 #4:** anexar notas de rodapé ao chunk do item que as
+   referencia (`Receitas de Operações de Seguros¹` → o chunk dela
+   também traz a nota ¹).
+3. Ajuste fino do template do chunk (trocar "Tabela:" por
+   "Título da tabela:" para resolver o q7 do Itaú original; repetir
+   o ∆ com sufixo explícito "∆ t/t" quando puder inferir).
+4. Generalizar para tabelas com sub-cabeçalhos hierárquicos
    (Controladora × Consolidado).
-6. Replicar em Magalu e Vale 1T25 para ter 4 casos de teste.
-7. Comparar contra `Unstructured.io` e `Docling` em vez de só
+5. Replicar em Magalu e Vale 1T25 para ter 4 casos de teste.
+6. Comparar contra `Unstructured.io` e `Docling` em vez de só
    `pdfplumber` baseline.

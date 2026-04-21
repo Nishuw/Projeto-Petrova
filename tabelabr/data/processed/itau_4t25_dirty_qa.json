@@ -1,0 +1,58 @@
+{
+  "source": "call_4t25_port.pdf",
+  "page": 21,
+  "table_index": 0,
+  "table_title": "Resultados",
+  "notes": "Caso de teste para ISOLAR o efeito do item #2 da Fase 2 (normalização numérica). As perguntas escolhidas batem em linhas onde a extração do pdfplumber tem patologias: (a) ESPAÇOS FALSOS dentro do número — por exemplo 'Produto Bancário 4T25' deveria ser '47.560' mas foi extraído como '4 7.560' por causa do layout apertado; (b) SINAIS CONTÁBEIS — despesas/custos vêm entre parênteses ('(9.397)') em vez de prefixadas com '-'. Sem normalização, o LLM enfrenta strings ambíguas mesmo quando o cabeçalho está correto.",
+  "questions": [
+    {
+      "id": "q1_produto_bancario_4t25",
+      "question": "Qual foi o Produto Bancário do Itaú no 4T25 (em R$ milhões)?",
+      "gold_answers": ["47.560", "47560"],
+      "tipo": "numero_com_espaco_falso",
+      "patologia_extracao": "'4 7.560'"
+    },
+    {
+      "id": "q2_produto_bancario_2025",
+      "question": "Qual foi o Produto Bancário acumulado do Itaú em 2025?",
+      "gold_answers": ["184.393", "184393"],
+      "tipo": "numero_com_espaco_falso",
+      "patologia_extracao": "'1 84.393'"
+    },
+    {
+      "id": "q3_mfg_2024",
+      "question": "Qual foi a Margem Financeira Gerencial do Itaú acumulada em 2024?",
+      "gold_answers": ["112.445", "112445"],
+      "tipo": "numero_com_espaco_falso",
+      "patologia_extracao": "'1 12.445'"
+    },
+    {
+      "id": "q4_rps_4t24",
+      "question": "Qual foi o valor das Receitas de Prestação de Serviços do Itaú no 4T24?",
+      "gold_answers": ["11.697", "11697"],
+      "tipo": "numero_com_espaco_falso",
+      "patologia_extracao": "'1 1.697'"
+    },
+    {
+      "id": "q5_custo_credito_4t25",
+      "question": "Qual foi o valor (módulo, em R$ milhões) do Custo do Crédito do Itaú no 4T25?",
+      "gold_answers": ["9.397", "9397", "(9.397)", "-9.397"],
+      "tipo": "parenteses_contabeis",
+      "patologia_extracao": "'(9.397)'"
+    },
+    {
+      "id": "q6_custo_credito_2024",
+      "question": "Qual foi o Custo do Crédito do Itaú no ano de 2024 (em valor absoluto)?",
+      "gold_answers": ["34.493", "34493", "(34.493)", "-34.493"],
+      "tipo": "parenteses_contabeis",
+      "patologia_extracao": "'( 34.493)'"
+    },
+    {
+      "id": "q7_despesas_tributarias_4t25",
+      "question": "Qual foi o valor das Despesas Tributárias de ISS, PIS, Cofins e Outras do Itaú no 4T25 (em valor absoluto)?",
+      "gold_answers": ["2.619", "2619", "(2.619)", "-2.619", "( 2.619)"],
+      "tipo": "parenteses_contabeis",
+      "patologia_extracao": "'( 2.619)'"
+    }
+  ]
+}

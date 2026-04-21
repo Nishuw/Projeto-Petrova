@@ -1,0 +1,128 @@
+{
+  "generated_at": "2026-04-21T01:35:10Z",
+  "source": "call_4t25_port.pdf",
+  "table_title": "Resultados",
+  "n_questions": 7,
+  "baseline": {
+    "correct": 1,
+    "accuracy": 0.14285714285714285,
+    "tokens_total": 1476
+  },
+  "self_contained_phase2_item1_only": {
+    "correct": 4,
+    "accuracy": 0.5714285714285714,
+    "tokens_total": 1744
+  },
+  "self_contained_phase2_item1_and_2": {
+    "correct": 7,
+    "accuracy": 1.0,
+    "tokens_total": 1702
+  },
+  "trials": [
+    {
+      "id": "q1_produto_bancario_4t25",
+      "question": "Qual foi o Produto Bancário do Itaú no 4T25 (em R$ milhões)?",
+      "gold_answers": [
+        "47.560",
+        "47560"
+      ],
+      "answer_baseline": "7.560",
+      "correct_baseline": false,
+      "answer_no_norm": "4.560",
+      "correct_no_norm": false,
+      "answer_with_norm": "47.560",
+      "correct_with_norm": true
+    },
+    {
+      "id": "q2_produto_bancario_2025",
+      "question": "Qual foi o Produto Bancário acumulado do Itaú em 2025?",
+      "gold_answers": [
+        "184.393",
+        "184393"
+      ],
+      "answer_baseline": "não consta",
+      "correct_baseline": false,
+      "answer_no_norm": "84.393",
+      "correct_no_norm": false,
+      "answer_with_norm": "184.393",
+      "correct_with_norm": true
+    },
+    {
+      "id": "q3_mfg_2024",
+      "question": "Qual foi a Margem Financeira Gerencial do Itaú acumulada em 2024?",
+      "gold_answers": [
+        "112.445",
+        "112445"
+      ],
+      "answer_baseline": "Não consta.",
+      "correct_baseline": false,
+      "answer_no_norm": "12.445",
+      "correct_no_norm": false,
+      "answer_with_norm": "112.445",
+      "correct_with_norm": true
+    },
+    {
+      "id": "q4_rps_4t24",
+      "question": "Qual foi o valor das Receitas de Prestação de Serviços do Itaú no 4T24?",
+      "gold_answers": [
+        "11.697",
+        "11697"
+      ],
+      "answer_baseline": "Não consta.",
+      "correct_baseline": false,
+      "answer_no_norm": "11.697",
+      "correct_no_norm": true,
+      "answer_with_norm": "11.697",
+      "correct_with_norm": true
+    },
+    {
+      "id": "q5_custo_credito_4t25",
+      "question": "Qual foi o valor (módulo, em R$ milhões) do Custo do Crédito do Itaú no 4T25?",
+      "gold_answers": [
+        "9.397",
+        "9397",
+        "(9.397)",
+        "-9.397"
+      ],
+      "answer_baseline": "9.397",
+      "correct_baseline": true,
+      "answer_no_norm": "9.397",
+      "correct_no_norm": true,
+      "answer_with_norm": "9.397",
+      "correct_with_norm": true
+    },
+    {
+      "id": "q6_custo_credito_2024",
+      "question": "Qual foi o Custo do Crédito do Itaú no ano de 2024 (em valor absoluto)?",
+      "gold_answers": [
+        "34.493",
+        "34493",
+        "(34.493)",
+        "-34.493"
+      ],
+      "answer_baseline": "Não consta.",
+      "correct_baseline": false,
+      "answer_no_norm": "34.493",
+      "correct_no_norm": true,
+      "answer_with_norm": "34.493",
+      "correct_with_norm": true
+    },
+    {
+      "id": "q7_despesas_tributarias_4t25",
+      "question": "Qual foi o valor das Despesas Tributárias de ISS, PIS, Cofins e Outras do Itaú no 4T25 (em valor absoluto)?",
+      "gold_answers": [
+        "2.619",
+        "2619",
+        "(2.619)",
+        "-2.619",
+        "( 2.619)"
+      ],
+      "answer_baseline": "Não consta.",
+      "correct_baseline": false,
+      "answer_no_norm": "2.619",
+      "correct_no_norm": true,
+      "answer_with_norm": "2.619",
+      "correct_with_norm": true
+    }
+  ]
+}

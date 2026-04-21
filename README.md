@@ -30,15 +30,26 @@ dados reais (releases CVM/B3 de Vale, Itaú, Magalu) e medir custo
 
 ## Resultado central até agora
 
-Em uma tabela alvo da Vale (1T26, "Resumo da produção"), com 7
-perguntas de gabarito e Llama-3.3-70b como avaliador:
+Sob retrieval parcial (LLM recebe só o chunk relevante — o cenário
+realista de RAG), Llama-3.3-70b como avaliador:
 
-| Cenário | Baseline (tabela bruta) | Auto-contido | Δ acurácia | Δ tokens |
+| Caso de teste | Baseline (linha solta) | Auto-contido (versão atual) | Δ acurácia | Δ tokens |
 |---|---:|---:|---:|---:|
-| Contexto completo (LLM recebe tabela inteira) | 85.7% | 85.7% | 0 pp | +43% |
-| Retrieval parcial (LLM recebe só o chunk relevante) | **0.0%** | **85.7%** | **+85.7 pp** | +26% |
+| Vale 1T26 / "Resumo da produção" (7 perguntas) | 0.0% | 85.7% | +85.7 pp | +26% |
+| Itaú 4T25 / DRE — linhas limpas (7 perguntas) | 0.0% | 71.4% | +71.4 pp | +19% |
+| Itaú 4T25 / DRE — linhas sujas (7 perguntas) | 14.3% | **100.0%** | +85.7 pp | +15% |
 
-Resultados completos, com método e dados crus, em
+A versão atual do algoritmo combina três mecanismos:
+
+1. Chunk auto-suficiente por linha de dados (Fase 1).
+2. Recuperação de cabeçalho via texto da página, para tabelas em que
+   o `pdfplumber` perde o header (Fase 2 #1).
+3. Normalização numérica: junção de espaços falsos (`"4 7.560"` →
+   `"47.560"`) e conversão de sinais contábeis (`"(9.397)"` →
+   `"-9.397"`) (Fase 2 #2).
+
+Resultados completos, com método, número de acertos por pergunta e
+dados crus, em
 [`tabelabr/reports/RESULTS.md`](./tabelabr/reports/RESULTS.md).
 
 ---
@@ -98,8 +109,10 @@ copy .env.example .env
 python scripts\02_baseline_batch.py
 
 # 5. Reproduza os experimentos do algoritmo
-python scripts\03_eval_chunkers.py            # cenário com contexto cheio
-python scripts\04_eval_partial_retrieval.py   # cenário de retrieval parcial
+python scripts\03_eval_chunkers.py                  # Vale: contexto cheio
+python scripts\04_eval_partial_retrieval.py         # Vale: retrieval parcial
+python scripts\05_eval_partial_retrieval_itau.py    # Itaú: ganho da Fase 2 #1
+python scripts\06_eval_normalization_itau.py        # Itaú: ganho da Fase 2 #2
 ```
 
 Os relatórios saem em `tabelabr/reports/`.
