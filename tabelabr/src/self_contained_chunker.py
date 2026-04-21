@@ -108,6 +108,85 @@ def _normalize_cell(cell: str | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Normalização numérica (Fase 2 #2)
+# ---------------------------------------------------------------------------
+#
+# Patologias observadas na recon do release Itaú:
+#
+#   1. ESPAÇOS FALSOS dentro do número. O pdfplumber às vezes insere
+#      um espaço entre o primeiro dígito e o resto do número quando o
+#      layout é apertado:
+#           "47.560"   →   "4 7.560"
+#           "184.393"  →   "1 84.393"
+#           "112.445"  →   "1 12.445"
+#           "5.167"    →   "5 .167"
+#      Isso quebra qualquer tentativa de comparação numérica e confunde
+#      o LLM (ele não sabe se é "4" ou "47" ou "47.560").
+#
+#   2. SINAIS CONTÁBEIS. Despesas e custos em DFs vêm entre parênteses
+#      em vez de prefixadas com sinal de menos:
+#           "-9.397"   →   "(9.397)"
+#           "-34.493"  →   "( 34.493)"
+#      Convenção contábil válida, mas confunde tanto comparações
+#      automáticas quanto LLMs que não foram fine-tunados em PT-BR
+#      financeiro.
+#
+# A função abaixo cobre os dois casos. É deliberadamente CONSERVADORA:
+# se o valor não bate exatamente com um dos padrões conhecidos, devolvo
+# inalterado. Prefiro perder um caso que reformatar texto que não era
+# pra ser número.
+
+# "(X)" ou "( X )" — sinal contábil. Captura o conteúdo interno.
+_PAREN_SIGN_RE = re.compile(r"^\(\s*(.+?)\s*\)$")
+
+# "X Y.YYY" onde X tem 1-3 dígitos e Y.YYY é um número formatado BR
+# com pelo menos um ponto de milhar. Casa "4 7.560", "1 84.393",
+# "3 1.382", etc.
+_FAKE_SPACE_BR_RE = re.compile(
+    r"^(\d{1,3})\s+(\d{1,3}(?:\.\d{3})+(?:,\d+)?)$"
+)
+
+# "X .YYY" — caso raro em que o espaço falso veio antes do ponto.
+# Ex: "5 .167" deveria ser "5.167".
+_FAKE_SPACE_DOT_RE = re.compile(
+    r"^(\d+)\s+(\.\d{3}(?:,\d+)?)$"
+)
+
+
+def _normalize_numeric_cell(value: str) -> str:
+    """Tenta consertar patologias de extração em uma célula numérica.
+
+    Aplica recursivamente para cobrir o caso aninhado
+    `"(  4 7.560 )"` → "(  47.560 )" → "-47.560".
+
+    Conservador: se nenhum padrão casa, devolve a string original.
+    """
+    if not value:
+        return value
+
+    s = value.strip()
+
+    paren = _PAREN_SIGN_RE.match(s)
+    if paren:
+        inner_normalized = _normalize_numeric_cell(paren.group(1))
+        # Evita gerar "--X" se o conteúdo interno por algum motivo
+        # já estava com sinal explícito.
+        if inner_normalized.startswith("-"):
+            return inner_normalized
+        return "-" + inner_normalized
+
+    fake_space = _FAKE_SPACE_BR_RE.match(s)
+    if fake_space:
+        return fake_space.group(1) + fake_space.group(2)
+
+    fake_space_dot = _FAKE_SPACE_DOT_RE.match(s)
+    if fake_space_dot:
+        return fake_space_dot.group(1) + fake_space_dot.group(2)
+
+    return s
+
+
+# ---------------------------------------------------------------------------
 # Detecção de contexto da tabela
 # ---------------------------------------------------------------------------
 
@@ -385,7 +464,9 @@ def render_baseline_chunk(table: Table) -> str:
 
 
 def render_self_contained_chunks(
-    table: Table, page_text: str | None = None
+    table: Table,
+    page_text: str | None = None,
+    normalize_numbers: bool = True,
 ) -> list[str]:
     """Gera um chunk auto-contido por linha de DADOS da tabela.
 
@@ -405,6 +486,12 @@ def render_self_contained_chunks(
     `page_text` é opcional e, quando fornecido, é usado para recuperar
     o cabeçalho de tabelas em que o pdfplumber perdeu a linha de header
     (padrão observado no release do Itaú). Ver `detect_context`.
+
+    `normalize_numbers` controla a aplicação da normalização numérica
+    (Fase 2 #2): junta espaços falsos dentro de números ("4 7.560" →
+    "47.560") e converte sinais contábeis em parênteses ("(9.397)" →
+    "-9.397"). Default `True` porque é a versão "produto"; o avaliador
+    passa `False` quando quer medir o ganho marginal isolado.
     """
     cleaned = _strip_phantom_columns(table)
     if not cleaned:
@@ -461,6 +548,8 @@ def render_self_contained_chunks(
             )
             if not header and not val:
                 continue
+            if val and normalize_numbers:
+                val = _normalize_numeric_cell(val)
             pairs.append((header or f"Coluna {i}", val or "(não informado)"))
 
         # Se todos os "valores" são vazios/sem informação, é uma linha de
