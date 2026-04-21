@@ -1,0 +1,125 @@
+{
+  "generated_at": "2026-04-20T19:03:51Z",
+  "source": "call_4t25_port.pdf",
+  "table_title": "Resultados",
+  "n_questions": 7,
+  "baseline": {
+    "correct": 0,
+    "accuracy": 0.0,
+    "tokens_total": 1381
+  },
+  "self_contained_no_recovery": {
+    "correct": 1,
+    "accuracy": 0.14285714285714285,
+    "tokens_total": 1663
+  },
+  "self_contained_with_recovery": {
+    "correct": 5,
+    "accuracy": 0.7142857142857143,
+    "tokens_total": 1642
+  },
+  "trials": [
+    {
+      "id": "q1_mfc_4t25",
+      "question": "Qual foi a Margem Financeira com Clientes do Itaú no 4T25?",
+      "gold_answers": [
+        "30.930",
+        "30930",
+        "30,930"
+      ],
+      "answer_baseline": "Não consta.",
+      "correct_baseline": false,
+      "answer_no_recovery": "28.484",
+      "correct_no_recovery": false,
+      "answer_with_recovery": "30.930",
+      "correct_with_recovery": true
+    },
+    {
+      "id": "q2_mfc_2025",
+      "question": "Qual foi a Margem Financeira com Clientes do Itaú acumulada em 2025?",
+      "gold_answers": [
+        "121.128",
+        "121128"
+      ],
+      "answer_baseline": "não consta",
+      "correct_baseline": false,
+      "answer_no_recovery": "não consta",
+      "correct_no_recovery": false,
+      "answer_with_recovery": "121.128",
+      "correct_with_recovery": true
+    },
+    {
+      "id": "q3_mfm_3t25",
+      "question": "Qual foi a Margem Financeira com o Mercado do Itaú no 3T25?",
+      "gold_answers": [
+        "902"
+      ],
+      "answer_baseline": "Não consta.",
+      "correct_baseline": false,
+      "answer_no_recovery": "904",
+      "correct_no_recovery": false,
+      "answer_with_recovery": "902",
+      "correct_with_recovery": true
+    },
+    {
+      "id": "q4_mfm_var_aa_ano",
+      "question": "Qual foi a variação ano contra ano (a/a) da Margem Financeira com o Mercado do Itaú em 2025?",
+      "gold_answers": [
+        "-25,8%",
+        "-25,8 %",
+        "-25.8%",
+        "25,8% negativos",
+        "queda de 25,8%"
+      ],
+      "answer_baseline": "não consta",
+      "correct_baseline": false,
+      "answer_no_recovery": "não consta",
+      "correct_no_recovery": false,
+      "answer_with_recovery": "-25,8%",
+      "correct_with_recovery": true
+    },
+    {
+      "id": "q5_mfm_4t24",
+      "question": "Qual foi a Margem Financeira com o Mercado do Itaú no 4T24?",
+      "gold_answers": [
+        "904"
+      ],
+      "answer_baseline": "não consta",
+      "correct_baseline": false,
+      "answer_no_recovery": "904",
+      "correct_no_recovery": true,
+      "answer_with_recovery": "904",
+      "correct_with_recovery": true
+    },
+    {
+      "id": "q6_unidade",
+      "question": "Em que unidade monetária os valores dessa tabela estão expressos?",
+      "gold_answers": [
+        "R$ milhões",
+        "R$ milhoes",
+        "em milhões de reais",
+        "milhões de reais",
+        "R$ MM"
+      ],
+      "answer_baseline": "Não consta.",
+      "correct_baseline": false,
+      "answer_no_recovery": "Reais",
+      "correct_no_recovery": false,
+      "answer_with_recovery": "Reais",
+      "correct_with_recovery": false
+    },
+    {
+      "id": "q7_titulo",
+      "question": "Qual é o título dessa seção/tabela do release?",
+      "gold_answers": [
+        "resultados"
+      ],
+      "answer_baseline": "Margem Financeira com Clientes",
+      "correct_baseline": false,
+      "answer_no_recovery": "Margem Financeira",
+      "correct_no_recovery": false,
+      "answer_with_recovery": "Margem Financeira",
+      "correct_with_recovery": false
+    }
+  ]
+}

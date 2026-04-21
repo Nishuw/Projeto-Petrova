@@ -151,13 +151,92 @@ Como em RAG real o cenário (2) é a regra e (1) é a exceção, a tese
 fica: **vale a pena pagar +26% em tokens de armazenamento/embedding
 para evitar quedas catastróficas de precisão sob retrieval parcial.**
 
+---
+
+## Fase 2, item #1 — recuperação de cabeçalho via texto da página
+
+**Motivação:** a recon em uma tabela real do Itaú (DRE gerencial,
+`call_4t25_port.pdf` pág. 21) mostrou que o `pdfplumber.extract_tables()`
+frequentemente **devolve a tabela sem a linha de cabeçalho**. Ela
+existe no PDF, aparece no `page.extract_text()` puro
+(`"Em R$ milhões 4T25 3T25 ' 4T24 ' 2025 2024 '"`) mas não é
+reconhecida como linha da tabela estruturada. Sem isso o chunker
+auto-contido produz `"Coluna 1: 30.930"` em vez de `"4T25: 30.930"`,
+o que destrói praticamente toda a proposta de valor dele em tabelas
+grandes.
+
+Esse é o modo de falha `MISSING_HEADER` da Fase 0 — **74 de 96 tabelas
+do corpus** sofrem dele.
+
+**Método:** um segundo caso de teste (`data/processed/itau_4t25_qa.json`,
+7 perguntas sobre o DRE do Itaú, deliberadamente em linhas onde a
+extração numérica saiu limpa — para isolar o efeito do cabeçalho).
+Três estratégias sob retrieval parcial:
+
+1. Baseline (linha solta, como antes).
+2. Auto-contido SEM recuperação de cabeçalho — comportamento da Fase 1.
+3. Auto-contido COM recuperação — nova função
+   `recover_header_from_page_text` que busca no texto da página a
+   linha candidata (maior pontuação em tokens de período/∆) e
+   tokeniza. Inclui tratamento do artefato `\uf044` que o pdfplumber
+   devolve no lugar do `∆` em PDFs com fontes customizadas.
+
+**Resultado:**
+
+| Estratégia | Acertos | Precisão | Tokens |
+|---|---:|---:|---:|
+| Baseline | 0/7 | 0.0% | 1381 |
+| Auto-contido SEM recuperação | 1/7 | 14.3% | 1663 |
+| **Auto-contido COM recuperação (Fase 2 #1)** | **5/7** | **71.4%** | **1642** |
+
+Detalhe pergunta a pergunta:
+
+| ID | Pergunta (resumo) | Sem recuperação | Com recuperação |
+|---|---|---|---|
+| q1 | MFC 4T25 → 30.930 | "28.484" (chutou coluna errada) ✗ | "30.930" ✓ |
+| q2 | MFC 2025 → 121.128 | "não consta" ✗ | "121.128" ✓ |
+| q3 | MFM 3T25 → 902 | "904" (coluna errada) ✗ | "902" ✓ |
+| q4 | MFM var a/a 2025 → -25,8% | "não consta" ✗ | "-25,8%" ✓ |
+| q5 | MFM 4T24 → 904 | "904" ✓ (acaso) | "904" ✓ |
+| q6 | unidade → "R$ milhões" | "Reais" ✗ | "Reais" ✗ |
+| q7 | título → "Resultados" | "Margem Financeira" ✗ | "Margem Financeira" ✗ |
+
+**Leitura:**
+- Δ = **+57 pontos percentuais** (14.3% → 71.4%) mantendo retrieval parcial.
+- Custo: **praticamente zero** (de 1663 para 1642 tokens — até ficou
+  um pouco menor, porque "4T25" é mais curto que "Coluna 1").
+- Os 2 erros remanescentes NÃO são falha da recuperação de cabeçalho:
+  - q6: o LLM respondeu "Reais" (omitiu "milhões"). Falha de instrução
+    ou de matcher, não de chunking.
+  - q7: o LLM confundiu `Tabela: Resultados` com `Item: Margem
+    Financeira...`. Sinaliza que o rótulo "Tabela:" no template do
+    chunk é ambíguo — vai ser ajustado em iteração posterior (trocar
+    "Tabela:" por "Título da tabela:" ou similar).
+- Os ganhos dos itens q1–q4 são **puramente atribuíveis à recuperação
+  do cabeçalho** — sem ele, o LLM ou dizia "não consta" ou chutava uma
+  coluna adjacente, o que é pior (número errado parecendo certo).
+
+Reproduzir: `python scripts/05_eval_partial_retrieval_itau.py`. Saída
+em `reports/eval_partial_retrieval__itau_4t25.json`.
+
+---
+
 ## Próximos passos planejados
 
-1. Generalizar o chunker para tabelas com sub-cabeçalhos de coluna
-   (período-Controladora vs período-Consolidado, comum em DFs).
-2. Tratar notas de rodapé (`¹`, `²`) — hoje ficam órfãs no chunk.
-3. Replicar os experimentos em tabelas do Itaú e Magalu (setores
-   diferentes, estruturas diferentes).
-4. Medir custo de embedding adicional, não só de inferência.
-5. Comparar contra `Unstructured.io` e `Docling` em vez de só
+1. **Fase 2 #2:** normalização numérica — juntar espaços falsos
+   (`"4 7.560"` → `"47.560"`), converter sinais contábeis
+   (`"(9.397)"` → `"-9.397"`). Isso é o que barra mais perguntas
+   sobre o Itaú hoje.
+2. **Fase 2 #3:** detector automático "vale chunkar?" — filtro
+   anti-`TINY_TABLE` para evitar poluir o vector store com
+   pseudo-tabelas.
+3. **Fase 2 #4:** anexar notas de rodapé ao chunk do item que as
+   referencia.
+4. Ajuste fino do template do chunk (trocar "Tabela:" por
+   "Título da tabela:" para resolver o q7; repetir o ∆ com
+   sufixo explícito "∆ t/t" quando puder inferir).
+5. Generalizar para tabelas com sub-cabeçalhos hierárquicos
+   (Controladora × Consolidado).
+6. Replicar em Magalu e Vale 1T25 para ter 4 casos de teste.
+7. Comparar contra `Unstructured.io` e `Docling` em vez de só
    `pdfplumber` baseline.

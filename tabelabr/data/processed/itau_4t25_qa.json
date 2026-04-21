@@ -1,0 +1,62 @@
+{
+  "source": "call_4t25_port.pdf",
+  "page": 21,
+  "table_index": 0,
+  "table_title": "Resultados",
+  "notes": "Caso de teste desenhado especificamente para ISOLAR o efeito do item #1 da Fase 2 (recuperação de cabeçalho ausente). As perguntas foram escolhidas sobre linhas do DRE onde a extração numérica do pdfplumber saiu LIMPA (sem os bugs de espaço-dentro-de-número que vemos em outras linhas). Os itens cobertos aqui são 'Margem Financeira com Clientes' e 'Margem Financeira com o Mercado', ambos extraídos sem corrupção. Se o chunker com recuperação de cabeçalho for para algo próximo da acurácia que teve no caso Vale, então sabemos que o fix #1 funciona. Bugs de extração numérica (ex: '4 7.560' que deveria ser '47.560') ficam para o item #2 da Fase 2.",
+  "column_layout": [
+    "nome do item (col 0)",
+    "4T25 (col 1)",
+    "3T25 (col 2)",
+    "variação t/t (col 3)",
+    "4T24 (col 4)",
+    "variação a/a do trimestre (col 5)",
+    "2025 acumulado (col 6)",
+    "2024 acumulado (col 7)",
+    "variação a/a do ano (col 8)"
+  ],
+  "questions": [
+    {
+      "id": "q1_mfc_4t25",
+      "question": "Qual foi a Margem Financeira com Clientes do Itaú no 4T25?",
+      "gold_answers": ["30.930", "30930", "30,930"],
+      "tipo": "lookup_simples"
+    },
+    {
+      "id": "q2_mfc_2025",
+      "question": "Qual foi a Margem Financeira com Clientes do Itaú acumulada em 2025?",
+      "gold_answers": ["121.128", "121128"],
+      "tipo": "lookup_com_contexto_de_periodo"
+    },
+    {
+      "id": "q3_mfm_3t25",
+      "question": "Qual foi a Margem Financeira com o Mercado do Itaú no 3T25?",
+      "gold_answers": ["902"],
+      "tipo": "lookup_simples"
+    },
+    {
+      "id": "q4_mfm_var_aa_ano",
+      "question": "Qual foi a variação ano contra ano (a/a) da Margem Financeira com o Mercado do Itaú em 2025?",
+      "gold_answers": ["-25,8%", "-25,8 %", "-25.8%", "25,8% negativos", "queda de 25,8%"],
+      "tipo": "lookup_que_exige_cabecalho"
+    },
+    {
+      "id": "q5_mfm_4t24",
+      "question": "Qual foi a Margem Financeira com o Mercado do Itaú no 4T24?",
+      "gold_answers": ["904"],
+      "tipo": "lookup_que_exige_cabecalho"
+    },
+    {
+      "id": "q6_unidade",
+      "question": "Em que unidade monetária os valores dessa tabela estão expressos?",
+      "gold_answers": ["R$ milhões", "R$ milhoes", "em milhões de reais", "milhões de reais", "R$ MM"],
+      "tipo": "metadado_unidade"
+    },
+    {
+      "id": "q7_titulo",
+      "question": "Qual é o título dessa seção/tabela do release?",
+      "gold_answers": ["resultados"],
+      "tipo": "metadado_titulo"
+    }
+  ]
+}
