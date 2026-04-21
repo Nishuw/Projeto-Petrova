@@ -127,6 +127,29 @@ _PERIOD_HINTS_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Tokens individuais que têm cara de cabeçalho de COLUNA quando
+# aparecem soltos numa linha do texto puro da página. Diferente do
+# regex acima (que procura por palavras-chave DENTRO de uma célula
+# já estruturada), esse aqui casa tokens atômicos: "4T25", "2025",
+# "∆", "'" (artefato do pdfplumber para o ∆), "a/a", "t/t".
+#
+# O \b evita matches parciais ("2025" dentro de "20255" não casa).
+# A ordem das alternativas importa para o regex engine — períodos
+# específicos primeiro, depois os genéricos.
+_HEADER_TOKEN_RE = re.compile(
+    r"\b\d{1,2}T\d{2}\b|"          # 4T25, 1T26 — trimestre no padrão BR
+    r"\b\d{4}\b|"                  # 2025, 2024 — ano cheio
+    r"\bControlador(?:a)?\b|"      # coluna de DF consolidada/controladora
+    r"\bConsolidad(?:o|a)\b|"
+    r"∆|Δ|\uf044|"                 # delta (variação): Unicode padrão,
+                                   # grego, ou o glyph PUA 0xF044 que o
+                                   # pdfplumber devolve quando a fonte
+                                   # do PDF usa mapeamento customizado
+                                   # (observado no release do Itaú).
+    r"\ba/a\b|\bt/t\b",
+    re.IGNORECASE,
+)
+
 
 def _row_has_period_hints(row: Row) -> bool:
     """`True` se a linha contém alguma marca de cabeçalho de período."""
@@ -137,7 +160,110 @@ def _row_has_unit_hint(row: Row) -> bool:
     return any(c and _UNIT_HINTS_RE.search(c) for c in row)
 
 
-def detect_context(table: Table) -> TableContext:
+# ---------------------------------------------------------------------------
+# Recuperação de cabeçalho a partir do texto puro da página
+# ---------------------------------------------------------------------------
+#
+# Problema mapeado na recon do Itaú: o `pdfplumber.extract_tables()` às
+# vezes devolve uma tabela SEM a linha de cabeçalho — ela estava no PDF,
+# mas como não foi detectada como "linha de tabela", sumiu. No entanto,
+# o texto puro da página (`page.extract_text()`) ainda contém a linha
+# original ("Em R$ milhões 4T25 3T25 ' 4T24 ' 2025 2024 '").
+#
+# A estratégia aqui: se a tabela estruturada não tem cabeçalho, procurar
+# no texto da página a linha mais provável de ser o cabeçalho (aquela
+# com mais tokens tipo período/∆), e tokenizá-la.
+
+
+def _score_candidate_header(line: str) -> int:
+    """Pontua quão parecida uma linha do texto é com um cabeçalho de tabela.
+
+    Pontuação é o número de tokens de cabeçalho distintos que casam.
+    Linhas que tenham 3+ tokens de período/∆ são candidatas fortes.
+    """
+    return len(_HEADER_TOKEN_RE.findall(line))
+
+
+def recover_header_from_page_text(
+    page_text: str, expected_n_cols: int
+) -> tuple[str | None, str | None, list[str]] | None:
+    """Tenta extrair (título, unidade, cabeçalhos de coluna) do texto puro
+    da página quando a tabela estruturada não trouxe o cabeçalho.
+
+    Retorna `None` se não encontrou candidato plausível — o caller deve
+    cair no fallback.
+
+    Heurística:
+        1. Divide o texto em linhas.
+        2. Acha a linha com maior pontuação de cabeçalho (candidata a
+           "linha do cabeçalho"). Exige ao menos 3 tokens tipo período.
+        3. A última linha NÃO-VAZIA acima é candidata a TÍTULO.
+        4. Dentro da linha do cabeçalho, tudo ANTES do primeiro token
+           de período é a UNIDADE (ex: "Em R$ milhões").
+        5. Substitui o artefato " ' " por "∆" (o pdfplumber perde o ∆
+           renderizado e devolve apóstrofo).
+        6. Quebra os tokens de período restantes — se o número de
+           tokens bater com `expected_n_cols - 1` (uma coluna é do nome
+           do item), confiamos; senão devolvemos o que achamos com a
+           advertência implícita de que pode faltar/sobrar.
+    """
+    lines = [ln.rstrip() for ln in page_text.split("\n")]
+
+    best_idx = -1
+    best_score = 0
+    for idx, line in enumerate(lines):
+        score = _score_candidate_header(line)
+        if score >= 3 and score > best_score:
+            best_idx, best_score = idx, score
+
+    if best_idx < 0:
+        return None
+
+    header_line = lines[best_idx]
+
+    # Título = última linha não-vazia acima.
+    title: str | None = None
+    for j in range(best_idx - 1, -1, -1):
+        if lines[j].strip():
+            title = lines[j].strip()
+            break
+
+    # O `_HEADER_TOKEN_RE` já casa o glyph PUA \uf044 diretamente; não
+    # precisamos mais de normalização prévia. Mantemos a linha crua.
+    header_normalized = header_line
+
+    # Acha onde começa o primeiro token de período. Tudo antes é a unidade.
+    first_match = _HEADER_TOKEN_RE.search(header_normalized)
+    unit: str | None = None
+    if first_match and first_match.start() > 0:
+        prefix = header_normalized[: first_match.start()].strip()
+        # Só trata como unidade se tiver pista de unidade — senão pode
+        # ser só o título repetido.
+        if prefix and _UNIT_HINTS_RE.search(prefix):
+            unit = prefix
+
+    # Tokens de período/∆ em ordem de aparição.
+    raw_tokens = [m.group(0) for m in _HEADER_TOKEN_RE.finditer(header_normalized)]
+
+    # Coluna 0 é sempre "nome do item" e não tem cabeçalho explícito.
+    # As demais recebem os tokens recuperados, um por um.
+    column_headers: list[str] = [""]  # col 0 = nome do item
+    for tok in raw_tokens:
+        # Normaliza todas as grafias de delta (Δ grego, ∆ matemático,
+        # \uf044 do PUA do pdfplumber) para um único "∆" na saída.
+        if tok in ("Δ", "∆", "\uf044"):
+            column_headers.append("∆")
+        else:
+            column_headers.append(tok)
+
+    # Se o número não bate com `expected_n_cols`, ainda assim devolvemos
+    # o que encontramos. Caller decide se confia ou não.
+    return title, unit, column_headers
+
+
+def detect_context(
+    table: Table, page_text: str | None = None
+) -> TableContext:
     """Identifica título, unidade e cabeçalho de colunas.
 
     Heurística (calibrada nos PDFs do estudo, página 1 da Vale):
@@ -152,6 +278,11 @@ def detect_context(table: Table) -> TableContext:
     Quando a heurística não bate (ex: tabela sem título explícito),
     devolvo o que conseguir e deixo nulo o resto. O chunker downstream
     sabe lidar com nulos.
+
+    Se `page_text` for fornecido e a tabela estruturada não tem linha
+    de cabeçalho, cai no `recover_header_from_page_text` — que é a
+    correção introduzida na Fase 2 (item #1) para lidar com tabelas
+    estilo Itaú, onde o cabeçalho não vem na extração.
     """
     title: str | None = None
     unit: str | None = None
@@ -168,6 +299,23 @@ def detect_context(table: Table) -> TableContext:
             break
 
     if header_idx == -1:
+        # Cabeçalho não veio na tabela estruturada. Se tivermos o texto
+        # da página, tentamos recuperar dele.
+        if page_text:
+            n_cols = max((len(r) for r in table), default=0)
+            recovered = recover_header_from_page_text(page_text, n_cols)
+            if recovered is not None:
+                rec_title, rec_unit, rec_headers = recovered
+                # Se a recuperação gerou menos colunas que a tabela,
+                # faz padding com "" para não indexar fora do range.
+                if len(rec_headers) < n_cols:
+                    rec_headers = rec_headers + [""] * (n_cols - len(rec_headers))
+                return TableContext(
+                    title=rec_title,
+                    unit=rec_unit,
+                    column_headers=rec_headers[:n_cols],
+                )
+
         # Sem cabeçalho de período identificado — devolvo só os non-blanks
         # como "fallback" (a primeira linha não-vazia vira título).
         for row in table[:3]:
@@ -236,7 +384,9 @@ def render_baseline_chunk(table: Table) -> str:
     return "\n".join(lines)
 
 
-def render_self_contained_chunks(table: Table) -> list[str]:
+def render_self_contained_chunks(
+    table: Table, page_text: str | None = None
+) -> list[str]:
     """Gera um chunk auto-contido por linha de DADOS da tabela.
 
     Cada chunk segue o template:
@@ -251,12 +401,16 @@ def render_self_contained_chunks(table: Table) -> list[str]:
     Linhas que não têm dados (separadores, subtítulos, totais sem valor)
     são puladas. Linhas que TÊM valor mas onde TODAS as colunas
     numéricas são vazias também são puladas (não há fato a recuperar).
+
+    `page_text` é opcional e, quando fornecido, é usado para recuperar
+    o cabeçalho de tabelas em que o pdfplumber perdeu a linha de header
+    (padrão observado no release do Itaú). Ver `detect_context`.
     """
     cleaned = _strip_phantom_columns(table)
     if not cleaned:
         return []
 
-    ctx = detect_context(cleaned)
+    ctx = detect_context(cleaned, page_text=page_text)
 
     # Identifica a linha de cabeçalho dentro da tabela limpa.
     header_idx = -1
@@ -265,6 +419,9 @@ def render_self_contained_chunks(table: Table) -> list[str]:
             header_idx = i
             break
 
+    # Se a tabela não tem linha de cabeçalho própria mas nós recuperamos
+    # do page_text, todas as linhas da tabela são DADOS.
+    # Caso contrário, pulamos a linha do header.
     data_start = header_idx + 1 if header_idx >= 0 else 0
     data_rows = cleaned[data_start:]
 
@@ -338,6 +495,19 @@ def extract_specific_table(
     Útil para o avaliador: queremos sempre comparar EXATAMENTE a mesma
     tabela em ambas as estratégias.
     """
+    table, _ = extract_table_with_context(pdf_path, page_num, table_index)
+    return table
+
+
+def extract_table_with_context(
+    pdf_path: str, page_num: int, table_index: int
+) -> tuple[Table, str]:
+    """Versão estendida que devolve também o texto puro da página.
+
+    Introduzida na Fase 2 (item #1): para tabelas em que o cabeçalho
+    não vem na extração estruturada, precisamos do texto da página para
+    recuperá-lo.
+    """
     with pdfplumber.open(pdf_path) as pdf:
         page = pdf.pages[page_num - 1]
         tables = page.extract_tables() or []
@@ -346,4 +516,5 @@ def extract_specific_table(
                 f"Página {page_num} tem {len(tables)} tabelas; "
                 f"índice {table_index} fora do alcance."
             )
-        return tables[table_index]
+        page_text = page.extract_text() or ""
+        return tables[table_index], page_text
