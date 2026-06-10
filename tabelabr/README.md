@@ -35,10 +35,12 @@ tabelabr/
 │   ├── RESULTS.md           Síntese narrativa dos experimentos
 │   └── ...                  Saídas brutas (markdown e JSON) de cada run
 ├── scripts/                 Pontos de entrada, numerados por ordem
-│   ├── 01_baseline_pdfplumber.py     Baseline em 1 PDF
-│   ├── 02_baseline_batch.py          Baseline em todos os PDFs de data/raw/
-│   ├── 03_eval_chunkers.py           Experimento: contexto cheio
-│   └── 04_eval_partial_retrieval.py  Experimento: retrieval parcial
+│   ├── 01_baseline_pdfplumber.py            Baseline em 1 PDF
+│   ├── 02_baseline_batch.py                 Baseline em todos os PDFs de data/raw/
+│   ├── 03_eval_chunkers.py                  Experimento: contexto cheio (Vale)
+│   ├── 04_eval_partial_retrieval.py         Experimento: retrieval parcial (Vale)
+│   ├── 05_eval_partial_retrieval_itau.py    Fase 2 #1: recuperação de cabeçalho (Itaú)
+│   └── 06_eval_normalization_itau.py        Fase 2 #2: normalização numérica (Itaú)
 └── src/                     Módulos reutilizáveis
     ├── failure_modes.py            Detectores de modos de falha
     ├── self_contained_chunker.py   O algoritmo proposto
@@ -82,11 +84,20 @@ cp .env.example .env
 
 ### 1. Coloque PDFs de DFs reais em `data/raw/`
 
-Fontes públicas:
+Os PDFs **não são versionados** — baixe-os das fontes públicas:
 
 - Vale: <https://vale.com/pt/investidores>
 - Itaú: <https://www.itau.com.br/relacoes-com-investidores/release-de-resultados>
 - CVM: <https://www.rad.cvm.gov.br/>
+
+Os experimentos (scripts 03–06) esperam estes nomes exatos em `data/raw/`:
+
+| Arquivo | Documento | Usado por |
+|---|---|---|
+| `Produção e vendas da Vale no 1T26.pdf` | Vale, release 1T26 | scripts 03 e 04 |
+| `call_4t25_port.pdf` | Itaú, release 4T25 | scripts 05 e 06 |
+| `Relatório de Produção e Vendas 1T25.pdf` | Vale, release 1T25 | Fase 0 (script 02) |
+| `MGLU_ER_4T25_POR.pdf` | Magalu, release 4T25 | Fase 0 (script 02) |
 
 ### 2. Diagnóstico do problema (Fase 0)
 
@@ -97,11 +108,13 @@ python scripts\02_baseline_batch.py
 Roda o `pdfplumber` em todos os PDFs de `data/raw/`, classifica as
 tabelas por modo de falha e gera `reports/_consolidated__pdfplumber.md`.
 
-### 3. Reproduzir os experimentos do algoritmo (Fase 1)
+### 3. Reproduzir os experimentos do algoritmo (Fases 1 e 2)
 
 ```powershell
-python scripts\03_eval_chunkers.py            # contexto cheio
-python scripts\04_eval_partial_retrieval.py   # retrieval parcial
+python scripts\03_eval_chunkers.py                 # Fase 1: contexto cheio (Vale)
+python scripts\04_eval_partial_retrieval.py        # Fase 1: retrieval parcial (Vale)
+python scripts\05_eval_partial_retrieval_itau.py   # Fase 2 #1: recuperação de cabeçalho (Itaú)
+python scripts\06_eval_normalization_itau.py       # Fase 2 #2: normalização numérica (Itaú)
 ```
 
 A leitura completa dos resultados está em
@@ -133,9 +146,9 @@ honesto de problemas em quem é o usuário-alvo do projeto.
 
 | # | Nome | O que faz |
 |---|------|-----------|
-| 05 | `05_baseline_unstructured.py` | Diagnóstico usando Unstructured.io para comparar com `pdfplumber` |
-| 06 | `06_build_tabelabr50.py` | Consolida o benchmark TabelaBR-50 (50 perguntas em ≥5 documentos) |
-| 07 | `07_eval_full_benchmark.py` | Roda baseline vs. auto-contido em todo o benchmark |
+| 07 | `07_baseline_unstructured.py` | Diagnóstico usando Unstructured.io para comparar com `pdfplumber` |
+| 08 | `08_build_tabelabr50.py` | Consolida o benchmark TabelaBR-50 (50 perguntas em ≥5 documentos) |
+| 09 | `09_eval_full_benchmark.py` | Roda baseline vs. auto-contido em todo o benchmark |
 
 ---
 

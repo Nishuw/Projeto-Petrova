@@ -106,7 +106,7 @@ objetiva ao longo do projeto e (eventualmente) como dataset público.
       `data/processed/vale_1t26_qa.json`)
 - [ ] Rodar o avaliador completo sobre as 50 perguntas
 
-**Critério de pronto:** rodar `python scripts/05_eval_full_benchmark.py`
+**Critério de pronto:** rodar `python scripts/09_eval_full_benchmark.py`
 e obter linhas como "baseline acerta X/50; auto-contido acerta Y/50".
 
 ---

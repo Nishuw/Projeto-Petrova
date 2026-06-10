@@ -61,7 +61,6 @@ dados crus, em
 ├── README.md                       Este arquivo (visão geral)
 ├── ROADMAP.md                      Fases do projeto e checkpoints
 ├── LICENSE                         Licença MIT
-├── O problema nao resolvido.md     Notas iniciais (rascunho de pesquisa)
 └── tabelabr/                       Código e dados do estudo
     ├── README.md                   Guia de uso do código
     ├── requirements.txt
@@ -105,10 +104,20 @@ pip install -r requirements.txt
 copy .env.example .env
 # edite .env e cole sua NVIDIA_API_KEY
 
-# 4. Rode o baseline em todos os PDFs de data/raw/
+# 4. Baixe os PDFs do corpus para data/raw/ (não são versionados).
+#    Os experimentos esperam estes nomes exatos de arquivo:
+#    - "Produção e vendas da Vale no 1T26.pdf"  (Vale, release 1T26)
+#      https://vale.com/pt/investidores
+#    - "call_4t25_port.pdf"                     (Itaú, release 4T25)
+#      https://www.itau.com.br/relacoes-com-investidores/release-de-resultados
+#    Para a Fase 0 completa, adicione também:
+#    - "Relatório de Produção e Vendas 1T25.pdf" (Vale, release 1T25)
+#    - "MGLU_ER_4T25_POR.pdf"                    (Magalu, release 4T25)
+
+# 5. Rode o baseline em todos os PDFs de data/raw/
 python scripts\02_baseline_batch.py
 
-# 5. Reproduza os experimentos do algoritmo
+# 6. Reproduza os experimentos do algoritmo
 python scripts\03_eval_chunkers.py                  # Vale: contexto cheio
 python scripts\04_eval_partial_retrieval.py         # Vale: retrieval parcial
 python scripts\05_eval_partial_retrieval_itau.py    # Itaú: ganho da Fase 2 #1
